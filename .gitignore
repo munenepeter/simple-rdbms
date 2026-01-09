@@ -1,5 +1,6 @@
 # Build artifacts
 build/
+build-release/
 *.exe
 *.o
 *.obj
