@@ -1,0 +1,52 @@
+# Build artifacts
+build/
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.exp
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.cmake
+!CMakeLists.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database files (test data)
+data/*/
+!data/.gitkeep
+
+# Web sub-project
+web/logs/
+web/api/data/
+
+# Test artifacts
+*.log
+*.tmp
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Compiled binaries
+*.out
+*.bin
+

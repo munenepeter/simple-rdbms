@@ -1,0 +1,10 @@
+#define DB_OK 0
+#define DB_ERR -1
+#define DB_ERR_PARSE -2
+#define DB_ERR_CONSTRAINT -3
+#define DB_ERR_TABLE_NOT_FOUND -4
+#define DB_ERR_DATABASE_NOT_OPEN -5
+#define DB_ERR_DATABASE_EXISTS -6
+#define DB_ERR_FILE_IO -7
+#define DB_ERR_ALREADY_EXISTS -8
+#define DB_ERR_INDEX_ERROR -9
