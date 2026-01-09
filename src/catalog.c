@@ -24,7 +24,13 @@ int catalog_create_table(TableSchema *schema) {
         fprintf(stderr, "Catalog path too long\n");
         return -1;
     }
-    snprintf(path, sizeof(path), "%s/catalog.meta", db_path);
+    int n = snprintf(path, sizeof(path), "%s/catalog.meta", db_path);
+
+    if (n < 0 || n >= (int)sizeof(path)) {
+        fprintf(stderr, "Index path too long\n");
+        path[0] = '\0';
+        return -1;
+    }
 
     int fd = open(path, O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
@@ -71,7 +77,13 @@ TableSchema *catalog_get_table(const char *name) {
     if (db_path_len + 15 >= sizeof(path)) {
         return NULL;
     }
-    snprintf(path, sizeof(path), "%s/catalog.meta", db_path);
+    int n = snprintf(path, sizeof(path), "%s/catalog.meta", db_path);
+
+    if (n < 0 || n >= (int)sizeof(path)) {
+        fprintf(stderr, "Index path too long\n");
+        path[0] = '\0';
+        return NULL;
+    }
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) return NULL;

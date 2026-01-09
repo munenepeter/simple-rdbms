@@ -20,10 +20,16 @@ static void get_index_path(char *path, const char *table, const char *column) {
         return;
     }
     #ifdef _WIN32
-    snprintf(path, 1024, "%s\\indexes\\%s_%s.idx", db_path, table, column);
+    int n = snprintf(path, 1024, "%s\\indexes\\%s_%s.idx", db_path, table, column);
     #else
-    snprintf(path, 1024, "%s/indexes/%s_%s.idx", db_path, table, column);
+    int n = snprintf(path, 1024, "%s/indexes/%s_%s.idx", db_path, table, column);
     #endif
+
+    if (n < 0 || n >= (int)sizeof(path)) {
+        fprintf(stderr, "Index path too long\n");
+        path[0] = '\0';
+        return;
+    }
    
 }
 

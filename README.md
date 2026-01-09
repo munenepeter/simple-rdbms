@@ -21,9 +21,9 @@ This project was built as part of an assessment for an open call for junior deve
 
 ## Platform Support
 
-⚠️ **Note**: This project has only been tested on **Windows x64** systems. While the code should be portable to other platforms, it has not been verified on Linux or macOS.
+> [!NOTE]  This project has only been tested on **Windows x64** systems. While the code should be portable to other platforms, it has not been tested on Linux or macOS.
 
-**Pre-built executables** for Windows x64 are available in the [Releases](https://github.com/yourusername/simple-rdbms/releases) section. Simply download and extract the executable to get started without building from source.
+**Pre-built executables** for Windows x64 are available in the [Releases](https://github.com/munenepeter/simple-rdbms/releases) section. Simply download and extract the executable to get started without building from source.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ This project was built as part of an assessment for an open call for junior deve
 
 ### Option 1: Using Pre-built Executable
 
-1. Download the latest release from the [Releases](https://github.com/yourusername/simple-rdbms/releases) section
+1. Download the latest release from the [Releases](https://github.com/munenepeter/simple-rdbms/releases) section
 2. Extract the executable
 3. Run the REPL:
    ```bash

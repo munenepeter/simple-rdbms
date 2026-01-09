@@ -112,7 +112,14 @@ int db_open(const char *name) {
     int found = 0;
 
     if (strncmp(name, "data/", 5) == 0) {
-        snprintf(db_path, sizeof(db_path), "%s", name);
+        int n = snprintf(db_path, sizeof(db_path), "%s", name);
+
+        if (n < 0 || n >= (int)sizeof(db_path)) {
+            fprintf(stderr, "DB path too long\n");
+            db_path[0] = '\0';
+            return -1;
+        }
+
         snprintf(meta_path, sizeof(meta_path), "%s/db.meta", db_path);
         if (stat(meta_path, &st) == 0) {
             found = 1;
@@ -178,7 +185,13 @@ void db_close(void) {
 
 int storage_table_open(const char *name) {
     char path[512];
-    snprintf(path, sizeof(path), "%s/tables/%s.tbl", db_path, name);
+    int n = snprintf(path, sizeof(path), "%s/tables/%s.tbl", db_path, name);
+
+    if (n < 0 || n >= (int)sizeof(path)) {
+        fprintf(stderr, "Index path too long\n");
+        path[0] = '\0';
+        return -1;
+    }
     
     int fd = open(path, O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
