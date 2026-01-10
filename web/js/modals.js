@@ -82,8 +82,23 @@ function showErrorHtmlModal(html) {
             if (form) {
                 form.addEventListener('submit', function (e) {
                     e.preventDefault();
-                    // notify parent to run migration (parent will perform the POST)
-                    window.parent.postMessage({ type: 'run_migration' }, '*');
+                    e.stopPropagation();
+                    try {
+                        // if the inline script already posted, don't post again
+                        if (iframe.contentWindow && iframe.contentWindow.__migration_posted) return;
+                        if (iframe.contentWindow) iframe.contentWindow.__migration_posted = true;
+                    } catch (ex) {
+                        // ignore cross-origin or access errors
+                    }
+                    // collect db if available and notify parent to run migration (parent will perform the POST)
+                    var dbVal = null;
+                    try {
+                        var dbField = doc.getElementById('db-name');
+                        if (dbField) dbVal = dbField.value;
+                    } catch (ex) {
+                        // ignore
+                    }
+                    window.parent.postMessage({ type: 'run_migration', db: dbVal }, '*');
                 });
             }
         } catch (e) {
@@ -102,17 +117,30 @@ function closeErrorModal() {
 }
 
 // listen for messages from the error iframe (e.g., run_migration)
+let __lastMigrationRunAt = 0;
 window.addEventListener('message', async function (e) {
     try {
         if (!e.data || e.data.type !== 'run_migration') return;
 
+        // debounce duplicate messages within 3 seconds
+        const now = Date.now();
+        if (now - __lastMigrationRunAt < 3000) {
+            console.warn('Ignoring duplicate migration request');
+            return;
+        }
+        __lastMigrationRunAt = now;
+
         if (!confirm('Run database setup on server?')) return;
+
+        // prefer db from the iframe message payload
+        const dbName = e.data && e.data.db ? e.data.db : undefined;
+        const body = 'run_migration=1' + (dbName ? '&db=' + encodeURIComponent(dbName) : '');
 
         // POST from parent context to avoid sandbox restrictions
         const resp = await fetch('setup_dummy_db.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'run_migration=1'
+            body: body
         });
 
         if (!resp.ok) {
