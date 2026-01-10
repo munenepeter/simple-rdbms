@@ -1,72 +1,59 @@
 <?php
 
-function writeLog($level = 'info', $message = ''): void {
+declare(strict_types=1); //10.01.2026
 
-    $file = __DIR__ . '/logs/web.log';
+/**
+ * Database handler, something like pdo
+ * 
+ * This is responsible for the actual communication with the database
+ * 
+ * @internal Please remembe i did thi as a part of recruitemnt challenge, so i haven't really
+ *           checked if this is safe to be used in prod, or tested all edge cases or bugs
+ *           if you find a bug, please let me know
+ * 
+ * 
+ * @author Peter Munene <munenenjega@gmail.com>
+ */
 
-    if (!is_dir(__DIR__ . '/logs')) {
-        mkdir(__DIR__ . '/logs', 0777, true);
-    }
-    if (!is_file($file)) {
-        file_put_contents($file, "");
-    }
+define('BUILD_DIR', __DIR__ . '/../build/');
 
-    $cmd = date('Y-m-d H:i:s') . " - $level: $message";
-    file_put_contents($file, $cmd . "\n", FILE_APPEND);
-}
 
 class Database {
+    private static ?Database $instance = null;
     private string $dbExe;
     private string $dbName;
 
-    public function __construct(string $dbName = 'webapp_db') {
-        $this->dbName = $dbName;
-        // path to db.exe relative to this file
-        $this->dbExe = PHP_OS_FAMILY === 'Windows' ? realpath(__DIR__ . '/../build/db.exe') : realpath(__DIR__ . '/../build/db');
+    private function __construct(string $dbname = '') {
+        if (empty($dbname)) $dbname = 'webapp_db';
 
-        if (!$this->dbExe) {
-            throw new Exception("Database executable not found. Please build the project.");
-        }
+        $this->dbName = $dbname;
+        $this->dbExe = getDatabaseExcutable();
 
-        //what if we do not have the database yet?
-
-        //what about the tables?
-
+        //what if we do not have the database yet? or tables?
         //how do we check?
-
         //for now i will do it manually cause am tired, 
-        // please don't worry as this can only be true if no data
-
-        // assuming the 1st ID Wil be always be 1, actually i'll make sure it is
-        $result = $this->execute("SELECT * FROM users id = 1;");
-        $success = $result['success'];
-        $error = $result['error'] ?? '';
-
-        //Database 'webapp_db' not found. Tried:\n  - data\/webapp_db\/db.meta\n  - ..\/data\/webapp_db\/db.meta\n  - ..\/..\/data\/webapp_db\/db.meta\nFailed to open database 'webapp_db'
-
-        if (!$success && ($error === 'Table \'users\' not found' || str_contains($error, 'Database \'webapp_db\' not found'))) {
-
-            //if db does not exist
-            if (str_contains($error, 'Database \'webapp_db\' not found')) {
-                writeLog("info", "Database not found, creating...");
-                $this->createDatabase();
-                writeLog("info", "Database created.");
-            }
-
-            writeLog("info", "Users table not found, creating...");
-            $this->execute("CREATE TABLE users (id INT PRIMARY KEY, name TEXT, email TEXT UNIQUE);");
-            writeLog("info", "Users table created.");
-            //similarly for books table, cause am sure one can't be missing in isolation
-            $this->execute("CREATE TABLE books (id INT PRIMARY KEY, title TEXT, author TEXT, user_id INT);");
-            writeLog("info", "Books table created.");
-
-            //insert 
-            $this->execute("INSERT INTO users VALUES (1, 'Peter', 'munenenjega@gmail.com'));");
-            writeLog("info", "Inserted default admin user.");
-        }
+        $this->setUpDatabase($dbname);
     }
 
-    public function execute(string $sql): array {
+    // sholuld be able to clone of the instance
+    // no other instances should exit
+    private function __clone() {
+    }
+
+    // should not be able to create an instance via unserializtion
+    // only one active instance, withput being stored
+    public function __wakeup() {
+        throw new Exception("Cannot unserialize singleton");
+    }
+
+    public static function getInstance(string $dbname = ''): Database {
+        if (self::$instance === null) {
+            self::$instance = new self($dbname);
+        }
+        return self::$instance;
+    }
+
+    public function execute(string $sql, bool $internal = false): array {
         $cmd = "\"{$this->dbExe}\" {$this->dbName} \"$sql\" 2>&1";
         $output = shell_exec($cmd);
 
@@ -81,10 +68,18 @@ class Database {
         //2. e.g Table 'users' not found -> i have no time to parse the table from the query
 
         //and yeah before you start complaining, yes i can do this, after all i am the author of the db
-        //
+        //TODO: parse the tale from the query
         if (str_contains($output, "Database") || str_contains($output, "' not found")) {
+
+            if (!$internal) {
+                writeLog("debug", "Database does not exist, trying to create it....");
+                $this->createDatabase();
+                return ['success' => true, 'message' => "Attempt to create database"];
+            }
             writeLog("error", "Database or Table does not exist error.");
             writeLog("debug", "Output: $output");
+
+            trigger_error(trim($output), E_USER_ERROR);
             return ['success' => false, 'error' => trim($output)];
         }
 
@@ -137,8 +132,128 @@ class Database {
         return ['success' => true, 'message' => trim($output)];
     }
 
-    public function createDatabase(): void {
+    public function createDatabase(): bool {
         $cmd = "\"{$this->dbExe}\" \"\" \"CREATE DATABASE {$this->dbName};\" 2>&1";
-        shell_exec($cmd);
+        $output = shell_exec($cmd);
+
+        if ($output === null) {
+            writeLog("error", "Failed to create database.");
+            trigger_error("Failed to create database.", E_USER_ERROR);
+            return false;
+        }
+
+        if (is_string($output) && str_contains($output, sprintf("Database '%s' initialized.", $this->dbName))) {
+            writeLog("info", "Database created.");
+            return true;
+        }
+        return false;
     }
+
+    public function setUpDatabase($dbName): void {
+        // please don't worry as this can only be true if no data
+
+        // assuming the 1st ID Wil be always be 1, actually i'll make sure it is
+        $result = $this->execute("SELECT * FROM users id = 1;");
+        $success = $result['success'];
+        $error = $result['error'] ?? '';
+
+        //Database 'webapp_db' not found. Tried:\n  - data\/webapp_db\/db.meta\n  - ..\/data\/webapp_db\/db.meta\n  - ..\/..\/data\/webapp_db\/db.meta\nFailed to open database 'webapp_db'
+
+        if (!$success && ($error === 'Table \'users\' not found' || str_contains($error, "Database '$dbName' not found"))) {
+
+            //if db does not exist
+            if (str_contains($error, "Database '$dbName' not found")) {
+                writeLog("info", "Database not found, creating...");
+                $this->createDatabase();
+                writeLog("info", "Database created.");
+            }
+
+            writeLog("info", "Users table not found, creating...");
+            $this->execute("CREATE TABLE users (id INT PRIMARY KEY, name TEXT, email TEXT UNIQUE);");
+            writeLog("info", "Users table created.");
+            //similarly for books table, cause am sure one can't be missing in isolation
+            $this->execute("CREATE TABLE books (id INT PRIMARY KEY, title TEXT, author TEXT, user_id INT);");
+            writeLog("info", "Books table created.");
+
+            //insert 
+            $this->execute("INSERT INTO users VALUES (1, 'Peter', 'munenenjega@gmail.com'));");
+            $this->execute("INSERT INTO users VALUES (2, 'Jane', 'jane@gmail.com');");
+            $this->execute("INSERT INTO users VALUES (3, 'John', 'john@gmail.com');");
+            writeLog("info", "Inserted default users.");
+
+
+            //books
+            $this->execute("INSERT INTO books VALUES (1, 'The Great Gatsby', 'F. Scott Fitzgerald', 1);");
+            $this->execute("INSERT INTO books VALUES (2, 'To Kill a Mockingbird', 'Harper Lee', 2);");
+            $this->execute("INSERT INTO books VALUES (3, '1984', 'George Orwell', 3);");
+            $this->execute("INSERT INTO books VALUES (4, 'The Catcher in the Rye', 'J.D. Salinger', 1);");
+            $this->execute("INSERT INTO books VALUES (5, 'Pride and Prejudice', 'Jane Austen', 2);");
+            $this->execute("INSERT INTO books VALUES (6, 'The Lord of the Rings', 'J.R.R. Tolkien', 3);");
+            writeLog("info", "Inserted default books.");
+        }
+    }
+}
+
+function writeLog($level = 'info', $message = ''): void {
+
+    $file = __DIR__ . '/logs/web.log';
+
+    if (!is_dir(__DIR__ . '/logs')) {
+        mkdir(__DIR__ . '/logs', 0777, true);
+    }
+    if (!is_file($file)) {
+        file_put_contents($file, "");
+    }
+
+    $cmd = date('Y-m-d H:i:s') . " - $level: $message";
+    file_put_contents($file, $cmd . "\n", FILE_APPEND);
+}
+
+function getDatabaseExcutable(): string {
+    // user can either
+    // 1. php -S localhost:8000 -d db.exe=/path/to/db.exe -> via ini
+
+    // 2. export DB_EXE=/path/to/db.exe &&  php -S localhost:8000
+
+    // 3. place the excutable in the web directory & run the server as normal
+    // php -S localhost:8000
+
+    //cache to avoid re-runs on every request
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    //1. check if passed via the dev server
+    //2. check if set in env
+    $opts = [
+        ini_get('db.exe'),
+        $_ENV['DB_EXE'] ?? null,
+    ];
+
+    foreach ($opts as $path) {
+        if ($path && is_file($path) && is_executable($path)) {
+            return $cached = realpath($path);
+        }
+    }
+
+    //3. check in build & current directory
+    foreach ([__DIR__, BUILD_DIR] as $dir) {
+        if (!is_dir($dir)) {
+            continue;
+        }
+
+        foreach (scandir($dir) as $file) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            if (is_file($path) && is_executable($path)) {
+                return $cached = realpath($path);
+            }
+        }
+    }
+
+    throw new RuntimeException('Database executable not found. Please build the project.');
 }

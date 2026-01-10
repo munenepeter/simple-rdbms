@@ -1,8 +1,14 @@
 <?php
 header('Content-Type: application/json');
-require_once __DIR__ . '/../db_handler.php';
+require_once __DIR__ . '/../init.php';
 
-$db = new Database('webapp_db');
+//check if $db is available
+if (!$db) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database connection error']);
+    exit;
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
@@ -10,13 +16,16 @@ switch ($method) {
         if (isset($_GET['user_id'])) {
             $userId = (int)$_GET['user_id'];
             $res = $db->execute("SELECT * FROM books WHERE user_id = $userId;");
+            $handleErrors($res);
             echo json_encode($res['data'] ?? []);
         } elseif (isset($_GET['id'])) {
             $id = (int)$_GET['id'];
             $res = $db->execute("SELECT * FROM books WHERE id = $id;");
+            $handleErrors($res);
             echo json_encode($res['data'][0] ?? null);
         } else {
             $res = $db->execute("SELECT * FROM books;");
+            $handleErrors($res);
             echo json_encode($res['data'] ?? []);
         }
         break;
@@ -33,6 +42,7 @@ switch ($method) {
         $author = addslashes($data['author']);
         $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;
         $res = $db->execute("INSERT INTO books VALUES ($id, '$title', '$author', $userId);");
+        $handleErrors($res);
         echo json_encode($res);
         break;
 
@@ -60,12 +70,14 @@ switch ($method) {
 
         $sql = "UPDATE books SET " . implode(", ", $sets) . " WHERE id = $id;";
         $res = $db->execute($sql);
+        $handleErrors($res);
         echo json_encode($res);
         break;
 
     case 'DELETE':
         $id = (int)$_GET['id'];
         $res = $db->execute("DELETE FROM books WHERE id = $id;");
+        $handleErrors($res);
         echo json_encode($res);
         break;
 

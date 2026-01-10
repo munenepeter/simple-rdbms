@@ -1,18 +1,16 @@
 <?php
 header('Content-Type: application/json');
-require_once __DIR__ . '/../db_handler.php';
 
-$db = new Database('webapp_db');
+require_once __DIR__ . '/../init.php';
+
+//check if $db is available
+if(!$db) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database connection error']);
+    exit;
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
-
-$handleErrors = function ($response) {
-    if (!$response['success']) {
-        http_response_code(500);
-        echo json_encode(['error' => $response['error']]);
-        exit;
-    }
-};
 
 switch ($method) {
     case 'GET':
@@ -20,12 +18,11 @@ switch ($method) {
             $id = (int)$_GET['id'];
             $res = $db->execute("SELECT * FROM users WHERE id = $id;");
 
-            $handleErrors($res);
 
             echo json_encode($res['data'][0] ?? null);
         } else {
 
-            writeLog("info", "Getting all users...");
+            // writeLog("info", "Getting all users...");
 
             $res = $db->execute("SELECT * FROM users;");
 
