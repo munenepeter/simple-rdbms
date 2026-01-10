@@ -94,7 +94,8 @@ document.getElementById('user-form').onsubmit = async (e) => {
     const idOrig = document.getElementById('user-id-orig').value;
     const data = {
         id: document.getElementById('user-id').value,
-        name: document.getElementById('user-name').value
+        name: document.getElementById('user-name').value,
+        email: document.getElementById('user-email').value
     };
 
     if (idOrig) {

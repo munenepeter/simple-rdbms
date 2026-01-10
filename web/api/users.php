@@ -42,9 +42,17 @@ switch ($method) {
             echo json_encode(['error' => 'Missing required fields']);
             break;
         }
-        $id = (int)$data['id'];
-        $name = addslashes($data['name']);
-        $res = $db->execute("INSERT INTO users VALUES ($id, '$name');");
+        $id = (int)$data['id'] ?? 0;
+        $name = isset($data['name']) ? addslashes($data['name']) : '';
+        $email = isset($data['email']) ? addslashes($data['email']) : '';
+
+        if ($id === 0 || $name === '' || $email === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID, Name, and Email are required']);
+            break;
+        }
+
+        $res = $db->execute("INSERT INTO users VALUES ($id, '$name', '$email');");
         $handleErrors($res);
         echo json_encode($res);
         break;
