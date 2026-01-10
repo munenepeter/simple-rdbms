@@ -32,7 +32,7 @@ class Database {
         //what if we do not have the database yet? or tables?
         //how do we check?
         //for now i will do it manually cause am tired, 
-        $this->setUpDatabase($dbname);
+        // $this->setUpDatabase($dbname);
     }
 
     // sholuld be able to clone of the instance
@@ -71,12 +71,13 @@ class Database {
         //TODO: parse the tale from the query
         if (str_contains($output, "Database") || str_contains($output, "' not found")) {
 
-            if (!$internal) {
-                writeLog("debug", "Database does not exist, trying to create it....");
-                $this->createDatabase();
-                return ['success' => true, 'message' => "Attempt to create database"];
+            if ($internal && str_contains($output, "' not found")) {
+                writeLog("debug", "Some tabels do not exist attempting to create them.");
+                // When running internal checks we should still surface failures (success=false)
+                // so callers like setUpDatabase() can react and create missing tables.
+                return ['success' => false, 'error' => trim($output)];
             }
-            writeLog("error", "Database or Table does not exist error.");
+            writeLog("error", "Table or Database does not exist.");
             writeLog("debug", "Output: $output");
 
             trigger_error(trim($output), E_USER_ERROR);
@@ -133,19 +134,41 @@ class Database {
     }
 
     public function createDatabase(): bool {
-        $cmd = "\"{$this->dbExe}\" \"\" \"CREATE DATABASE {$this->dbName};\" 2>&1";
-        $output = shell_exec($cmd);
 
-        if ($output === null) {
-            writeLog("error", "Failed to create database.");
-            trigger_error("Failed to create database.", E_USER_ERROR);
+       //change dir to executable's path\
+        chdir(__DIR__.'/../');
+
+        $cmd = "\"{$this->dbExe}\" \"\" \"CREATE DATABASE {$this->dbName};\" 2>&1";
+
+        $output = [];
+        $returnCode = 0;
+
+        exec($cmd, $output, $returnCode);
+
+        // Join output lines for logging and checking
+        $outputString = implode("\n", $output);
+
+        writeLog("debug", "Create database command: $cmd");
+        writeLog("debug", "Return code: $returnCode");
+        writeLog("debug", "Output: $outputString");
+
+        // Check if command execution failed at OS level
+        if ($returnCode !== 0) {
+            writeLog("error", "Failed to create database. Exit code: $returnCode");
+            writeLog("error", "Error output: $outputString");
+           // trigger_error("Failed to create database. Exit code: $returnCode", E_USER_ERROR);
             return false;
         }
 
-        if (is_string($output) && str_contains($output, sprintf("Database '%s' initialized.", $this->dbName))) {
-            writeLog("info", "Database created.");
+        // Check if database was successfully created based on output
+        if (str_contains($outputString, sprintf("Database '%s' initialized.", $this->dbName))) {
+            writeLog("info", "Database '{$this->dbName}' created successfully.");
             return true;
         }
+
+        // Command ran but database wasn't created (unexpected output)
+        writeLog("warning", "Database creation command completed but confirmation message not found.");
+        writeLog("warning", "Output received: $outputString");
         return false;
     }
 
@@ -153,9 +176,10 @@ class Database {
         // please don't worry as this can only be true if no data
 
         // assuming the 1st ID Wil be always be 1, actually i'll make sure it is
-        $result = $this->execute("SELECT * FROM users id = 1;");
+        // check a specific user row to see if the table exists
+        $result = $this->execute("SELECT * FROM users WHERE id = 1;", true);
         $success = $result['success'];
-        $error = $result['error'] ?? '';
+        $error = $result['error'] ?? ''; 
 
         //Database 'webapp_db' not found. Tried:\n  - data\/webapp_db\/db.meta\n  - ..\/data\/webapp_db\/db.meta\n  - ..\/..\/data\/webapp_db\/db.meta\nFailed to open database 'webapp_db'
 
@@ -176,7 +200,7 @@ class Database {
             writeLog("info", "Books table created.");
 
             //insert 
-            $this->execute("INSERT INTO users VALUES (1, 'Peter', 'munenenjega@gmail.com'));");
+            $this->execute("INSERT INTO users VALUES (1, 'Peter', 'munenenjega@gmail.com');");
             $this->execute("INSERT INTO users VALUES (2, 'Jane', 'jane@gmail.com');");
             $this->execute("INSERT INTO users VALUES (3, 'John', 'john@gmail.com');");
             writeLog("info", "Inserted default users.");

@@ -4,10 +4,24 @@ declare(strict_types=1); //10.01.2026
 /**
  * init.php
  * 
- * //we can do some stuff here, like time things or something
-// this will be my 'app/bootstrap.php' like in laravel
-
+ * we can do some stuff here, like time things or something
+ * this will be my 'app/bootstrap.php' like in laravel
+ *
+ * @author Peter Munene <munenenjega@gmail.com>
  */
+
+
+
+//CHANGE THIS
+
+define('DATABASE_NAME', 'webapp_db');
+
+
+
+
+
+
+
 
 set_error_handler('myErrorHandler');
 
@@ -34,7 +48,6 @@ require_once __DIR__ . '/db_handler.php';
 
 
 //must define database
-define('DATABASE_NAME', 'webap11p_db');
 $db = Database::getInstance(DATABASE_NAME);
 
 /// utils
@@ -160,6 +173,7 @@ INSERT INTO books VALUES (3, "My Third Book", "Steve Anita", 1);</pre>
         
         <!-- Action Button -->
         <form id="migration-form" method="post" style="text-align: center;">
+        <input type="hidden" name="db" id="db-name" value="' . $databaseName . '">
             <button type="submit" name="run_migration" value="1" 
                 style="background: blue; color: white; border: none; padding: 14px 35px; font-size: 16px; font-weight: 500; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s ease;"
                 >
@@ -170,14 +184,32 @@ INSERT INTO books VALUES (3, "My Third Book", "Steve Anita", 1);</pre>
             </p>
         </form>
         <script>
-        // Intercept the migration form and send a message to the parent window
+        // Intercept the migration form and send a message to the parent window (only once)
         (function () {
             var form = document.getElementById("migration-form");
             if (form) {
                 form.addEventListener("submit", function (e) {
                     e.preventDefault();
+                    // avoid double-posting
+                    if (window.__migration_posted) return;
+                    window.__migration_posted = true;
+
+                    // read db name from hidden input if present
+                    var dbInput = document.getElementById("db-name");
+                    var db = dbInput ? dbInput.value : null;
+
                     // send message to parent to run migration (parent will perform the POST)
-                    window.parent.postMessage({ type: "run_migration" }, "*");
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: "run_migration", db: db }, "*");
+                    } else {
+                        // If not embedded, create a small form and submit so "db" is included
+                        var hidden = document.createElement("input");
+                        hidden.type = "hidden";
+                        hidden.name = "db";
+                        hidden.value = db || ' . $databaseName . ';
+                        form.appendChild(hidden);
+                        form.submit();
+                    }
                 });
             }
         })();
