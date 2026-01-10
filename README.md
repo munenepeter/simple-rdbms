@@ -169,7 +169,28 @@ data/
 
 ## Web Application Demo
 
-A simple web application demonstrating CRUD operations is included in the `web/` directory. It's a PHP application that uses the RDBMS executable to manage users and books.
+A simple web application demonstrating CRUD operations can be found in the `web/` directory. It's a PHP application that uses the RDBMS executable to manage users and books.
+
+To run it, you just need a local web server with PHP, create a server 
+
+```bash
+cd web
+
+#define the path to the db.exe executable
+php -S localhost:8000 -d db.exe=/path/to/db.exe
+
+#or use env
+
+export DB_EXE=/path/to/db.exe
+php -S localhost:8000
+
+#place the db.exe executable in the web directory & run the server as normal
+
+php -S localhost:8000
+
+```
+
+and navigate to `http://localhost:8000`.
 
 ## Why C?
 

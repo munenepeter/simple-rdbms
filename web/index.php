@@ -1,3 +1,4 @@
+<? require_once __DIR__ . '/init.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +11,7 @@
         .section { display: none; }
         .section.active { display: block; }
         .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; }
+        .modal-content { background-color: #fefefe; margin: 12% auto; padding: 20px; border: 1px solid #888; width: 80%; }
         table { border-collapse: collapse; width: 100%; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .nav { margin-bottom: 20px; }
@@ -100,6 +101,18 @@
             </form>
         </div>
     </div>
+
+    <!-- Server Error Modal (renders server HTML into an iframe) -->
+    <div id="error-modal" class="modal">
+        <div class="modal-content" style="margin: 3% auto !important; max-width: 90%;width: 90%;height: 85%;padding: 0;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 1rem; background:#f3f4f6;">
+                <h3 style="margin:0;">Server Error</h3>
+                <button onclick="closeErrorModal()" style="background:transparent;border:none;font-size:1.25rem;cursor:pointer;">&times;</button>
+            </div>
+            <!-- allow forms for migrations to work -->
+            <iframe id="error-iframe" style="width:100%; height:calc(100% - 44px); border:none;" sandbox="allow-same-origin allow-scripts allow-forms allow-top-navigation-by-user-activation"></iframe>
+        </div>
+    </div> 
 
     <script src="js/api.js"></script>
     <script src="js/modals.js"></script>
